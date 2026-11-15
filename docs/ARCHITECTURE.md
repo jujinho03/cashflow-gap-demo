@@ -26,22 +26,22 @@ Axum API (8080) ── api/routes ─ handlers ─ middleware(Admin, AppJson)
 
 ## 데이터 흐름
 
-**기본**: UI → `POST /api/scenarios/compare {clientId, scenarios}` → `finance::comparison::compare` → `projections::project`(월 루프) → rows·summary·warnings → 차트.
+기본: UI → `POST /api/scenarios/compare {clientId, scenarios}` → `finance::comparison::compare` → `projections::project`(월 루프) → rows·summary·warnings → 차트.
 고객 편집 중에는 `client`를 인라인으로 보내 저장 전 결과를 계산한다.
 
-**분석**: `POST /api/analysis` → `compute_metrics`(지표 레지스트리) → `evaluate_rules`(공통 base_rules + 주제 rules) → 인사이트(source=`rule_engine`) → 질문이 있으면 `copilot_answer`.
+분석: `POST /api/analysis` → `compute_metrics`(지표 레지스트리) → `evaluate_rules`(공통 base_rules + 주제 rules) → 인사이트(source=`rule_engine`) → 질문이 있으면 `copilot_answer`.
 
-**검증**: `POST /api/verification` → 주장별로 (필요 시 주제 프리셋 시나리오로) 재계산 → `verify_claim`(허용 오차 비교) → 인간 검토 기록과 결합 → `displayStatus`.
+검증: `POST /api/verification` → 주장별로 (필요 시 주제 프리셋 시나리오로) 재계산 → `verify_claim`(허용 오차 비교) → 인간 검토 기록과 결합 → `displayStatus`.
 
-**아이디어**: Studio → `/ideas/analyze` → `/ideas/generate`(topic_versions에 draft 저장 + 자동 검증) → `/ideas/:id/preview`(활성 주제 불변) → `/ideas/:id/activate`(재검증 → 이전 활성 버전을 롤백 스택에 push) → `/ideas/rollback`.
+아이디어: Studio → `/ideas/analyze` → `/ideas/generate`(topic_versions에 draft 저장 + 자동 검증) → `/ideas/:id/preview`(활성 주제 불변) → `/ideas/:id/activate`(재검증 → 이전 활성 버전을 롤백 스택에 push) → `/ideas/rollback`.
 
 ## 저장 모델 (SQLite)
 `clients`, `scenarios`, `action_plans`, `review_records`(JSON 문서), `topic_versions`(불변 버전), `app_state`(`active_version_id`, `activation_history`, `activation_log`). 프리셋은 시작 시 파일에서 동기화되며 생성 버전은 덮어쓰지 않는다.
 
 ## 주제별 확장 방식
-1. **데이터만으로 가능한 변경**: `topics/<id>/*.json` 수정(콘텐츠, 캔버스, 프리셋, KPI, 규칙, AI 초안 주장) — 서버 재시작 시 반영·검증.
-2. **런타임(방식 B)**: Idea Studio에서 생성 — 허용 목록(시각화 6종, 모듈 5종, 차트 6종, 노드 8종, 아이콘·모티프, 지표 레지스트리) 내에서만 조합.
-3. **개발(방식 A)**: 새 계산이 필요하면 `backend/src/finance/<module>.rs` 추가 + 지표를 `METRIC_DEFS`에 등록 + 테스트 → `ModuleId`에 추가 → 프리셋에서 참조. 예: `finance::business`(전염), `finance::care`(돌봄 충격).
+1. 데이터만으로 가능한 변경: `topics/<id>/*.json` 수정(콘텐츠, 캔버스, 프리셋, KPI, 규칙, AI 초안 주장) — 서버 재시작 시 반영·검증.
+2. 런타임(방식 B): Idea Studio에서 생성 — 허용 목록(시각화 6종, 모듈 5종, 차트 6종, 노드 8종, 아이콘·모티프, 지표 레지스트리) 내에서만 조합.
+3. 개발(방식 A): 새 계산이 필요하면 `backend/src/finance/<module>.rs` 추가 + 지표를 `METRIC_DEFS`에 등록 + 테스트 → `ModuleId`에 추가 → 프리셋에서 참조. 예: `finance::business`(전염), `finance::care`(돌봄 충격).
 
 ## 프론트엔드 구조
 `app/`(App, router, BootProvider) · `components/{layout,ui,charts,canvas,financial}` · `pages/*` 9개 · `features/{clients,topics,verification}` · `services/{api,adapters}` · `stores/app.ts`(Zustand) · `types/api.ts`(Zod) · `styles/globals.css`(토큰). shadcn/ui는 CLI 대신 동일 패턴(cva + 합성 컴포넌트)으로 `components/ui`에 직접 구현했다.
